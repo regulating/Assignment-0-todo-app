@@ -23,8 +23,18 @@ async function loadTasks() {
         const li = document.createElement('li');
         li.className = 'task-item';
 
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = task.completed === 1;
+        checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, checkbox.checked));
+        li.appendChild(checkbox);
+
         const span = document.createElement('span');
         span.textContent = task.description;
+        if (task.completed === 1) {
+            span.style.textDecoration = 'line-through';
+            span.style.color = '#888';
+        }
         li.appendChild(span);
 
         const editBtn = document.createElement('button');
@@ -73,6 +83,29 @@ async function editTask(id, span, editBtn) {
         editBtn.previousElementSibling.replaceWith(spanNew);
         editBtn.textContent = 'Edit';
         loadTasks(); // Refresh list
+    }
+}
+
+// Toggle task completion in backend
+async function toggleTaskCompletion(id, isCompleted) {
+    console.log(`Attempting to toggle task ${id} to completed: ${isCompleted}`); // Debugging log
+    try {
+        const res = await fetch(`/tasks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: isCompleted ? 1 : 0 })
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            console.error('Failed to toggle task completion. Server response:', res.status, errorData); // Debugging log
+        } else {
+            console.log(`Task ${id} completion successfully updated on server.`); // Debugging log
+        }
+    } catch (error) {
+        console.error('Network or unexpected error during task completion toggle:', error); // Debugging log
+    } finally {
+        loadTasks(); // Always refresh list
     }
 }
 
