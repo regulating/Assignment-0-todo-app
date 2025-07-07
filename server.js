@@ -29,10 +29,24 @@ db.run(`
 
 // Routes
 
-// Get all tasks
+// Get all tasks (with optional filtering)
 app.get('/tasks', (req, res) => {
-    db.all('SELECT * FROM tasks', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+    const statusFilter = req.query.status;
+    let sql = 'SELECT * FROM tasks';
+    let params = [];
+
+    if (statusFilter === 'active') {
+        sql += ' WHERE completed = 0';
+    } else if (statusFilter === 'completed') {
+        sql += ' WHERE completed = 1';
+    }
+    sql += ' ORDER BY created_at DESC'; // Added sorting for consistency
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('GET /tasks - Database error:', err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(rows);
     });
 });
@@ -50,7 +64,7 @@ app.post('/tasks', (req, res) => {
 app.put('/tasks/:id', (req, res) => {
     const { description, completed } = req.body;
     const id = req.params.id;
-    console.log(`PUT /tasks/${id} - Received: description='${description}', completed='${completed}'`); // Debugging log
+    console.log(`PUT /tasks/${id} - Received: description='${description}', completed='${completed}'`);
 
     let updateFields = [];
     let params = [];
@@ -65,21 +79,21 @@ app.put('/tasks/:id', (req, res) => {
     }
 
     if (updateFields.length === 0) {
-        console.log('PUT /tasks/:id - No fields to update provided.'); // Debugging log
+        console.log('PUT /tasks/:id - No fields to update provided.');
         return res.status(400).json({ error: 'No fields to update provided.' });
     }
 
     params.push(id); // Add id for WHERE clause
 
     const sql = `UPDATE tasks SET ${updateFields.join(', ')} WHERE id = ?`;
-    console.log(`PUT /tasks/:id - Executing SQL: ${sql} with params: ${params}`); // Debugging log
+    console.log(`PUT /tasks/:id - Executing SQL: ${sql} with params: ${params}`);
 
     db.run(sql, params, function (err) {
         if (err) {
-            console.error('PUT /tasks/:id - Database error:', err.message); // Debugging log
+            console.error('PUT /tasks/:id - Database error:', err.message);
             return res.status(500).json({ error: err.message });
         }
-        console.log(`PUT /tasks/:id - Task ${id} updated. Changes: ${this.changes}`); // Debugging log
+        console.log(`PUT /tasks/:id - Task ${id} updated. Changes: ${this.changes}`);
         res.json({ updated: this.changes });
     });
 });
