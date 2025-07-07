@@ -9,6 +9,7 @@ const PORT = 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static('public'));
 
 // Connect to SQLite DB
 const db = new sqlite3.Database('./tasks.db', (err) => {
@@ -65,4 +66,8 @@ app.delete('/tasks/:id', (req, res) => {
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    app.get('/', (req, res) => {
+        res.sendFile(__dirname + '/public/index.html');
+    });
 });
+
