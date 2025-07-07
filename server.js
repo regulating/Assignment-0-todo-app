@@ -46,11 +46,40 @@ app.post('/tasks', (req, res) => {
     });
 });
 
-// Edit a task
+// Edit a task (can update description and/or completed status)
 app.put('/tasks/:id', (req, res) => {
-    const { description } = req.body;
-    db.run('UPDATE tasks SET description = ? WHERE id = ?', [description, req.params.id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+    const { description, completed } = req.body;
+    const id = req.params.id;
+    console.log(`PUT /tasks/${id} - Received: description='${description}', completed='${completed}'`); // Debugging log
+
+    let updateFields = [];
+    let params = [];
+
+    if (description !== undefined) {
+        updateFields.push('description = ?');
+        params.push(description);
+    }
+    if (completed !== undefined) {
+        updateFields.push('completed = ?');
+        params.push(completed);
+    }
+
+    if (updateFields.length === 0) {
+        console.log('PUT /tasks/:id - No fields to update provided.'); // Debugging log
+        return res.status(400).json({ error: 'No fields to update provided.' });
+    }
+
+    params.push(id); // Add id for WHERE clause
+
+    const sql = `UPDATE tasks SET ${updateFields.join(', ')} WHERE id = ?`;
+    console.log(`PUT /tasks/:id - Executing SQL: ${sql} with params: ${params}`); // Debugging log
+
+    db.run(sql, params, function (err) {
+        if (err) {
+            console.error('PUT /tasks/:id - Database error:', err.message); // Debugging log
+            return res.status(500).json({ error: err.message });
+        }
+        console.log(`PUT /tasks/:id - Task ${id} updated. Changes: ${this.changes}`); // Debugging log
         res.json({ updated: this.changes });
     });
 });
@@ -70,4 +99,3 @@ app.listen(PORT, () => {
         res.sendFile(__dirname + '/public/index.html');
     });
 });
-
