@@ -1,6 +1,39 @@
 const taskForm = document.getElementById('task-form');
 const taskList = document.getElementById('task-list');
 
+// Global variable to store current filter
+let currentFilter = 'all'; // Default filter
+
+// Get filter buttons
+const filterAllBtn = document.getElementById('filter-all');
+const filterActiveBtn = document.getElementById('filter-active');
+const filterCompletedBtn = document.getElementById('filter-completed');
+
+// Add event listeners for filter buttons
+filterAllBtn.addEventListener('click', () => {
+    console.log('Filter All button clicked.'); // Debugging log
+    setFilter('all');
+});
+filterActiveBtn.addEventListener('click', () => {
+    console.log('Filter Active button clicked.'); // Debugging log
+    setFilter('active');
+});
+filterCompletedBtn.addEventListener('click', () => {
+    console.log('Filter Completed button clicked.'); // Debugging log
+    setFilter('completed');
+});
+
+function setFilter(filter) {
+    console.log(`setFilter function called with filter: ${filter}`); // Debugging log
+    currentFilter = filter;
+    // Update active class on buttons (for styling later)
+    filterAllBtn.classList.remove('active');
+    filterActiveBtn.classList.remove('active');
+    filterCompletedBtn.classList.remove('active');
+    document.getElementById(`filter-${filter}`).classList.add('active');
+    loadTasks(); // Reload tasks with new filter
+}
+
 taskForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     const taskInput = document.getElementById('task-input');
@@ -8,13 +41,21 @@ taskForm.addEventListener('submit', async function (e) {
     if (description !== '') {
         await addTask(description);
         taskInput.value = '';
-        loadTasks();
+        loadTasks(); // Load tasks with current filter
     }
 });
 
 // Load tasks from backend
 async function loadTasks() {
-    const res = await fetch('/tasks');
+    let url = '/tasks';
+    if (currentFilter === 'active') {
+        url += '?status=active';
+    } else if (currentFilter === 'completed') {
+        url += '?status=completed';
+    }
+    console.log(`Fetching tasks with filter: ${currentFilter}, URL: ${url}`);
+
+    const res = await fetch(url);
     const tasks = await res.json();
 
     taskList.innerHTML = ''; // Clear list
@@ -88,7 +129,7 @@ async function editTask(id, span, editBtn) {
 
 // Toggle task completion in backend
 async function toggleTaskCompletion(id, isCompleted) {
-    console.log(`Attempting to toggle task ${id} to completed: ${isCompleted}`); // Debugging log
+    console.log(`Attempting to toggle task ${id} to completed: ${isCompleted}`);
     try {
         const res = await fetch(`/tasks/${id}`, {
             method: 'PUT',
@@ -98,14 +139,14 @@ async function toggleTaskCompletion(id, isCompleted) {
 
         if (!res.ok) {
             const errorData = await res.json();
-            console.error('Failed to toggle task completion. Server response:', res.status, errorData); // Debugging log
+            console.error('Failed to toggle task completion. Server response:', res.status, errorData);
         } else {
-            console.log(`Task ${id} completion successfully updated on server.`); // Debugging log
+            console.log(`Task ${id} completion successfully updated on server.`);
         }
     } catch (error) {
-        console.error('Network or unexpected error during task completion toggle:', error); // Debugging log
+        console.error('Network or unexpected error during task completion toggle:', error);
     } finally {
-        loadTasks(); // Always refresh list
+        loadTasks(); // Always refresh list with current filter
     }
 }
 
@@ -114,7 +155,7 @@ async function deleteTask(id) {
     await fetch(`/tasks/${id}`, {
         method: 'DELETE'
     });
-    loadTasks(); // Refresh list
+    loadTasks(); // Refresh list with current filter
 }
 
 // Initial load
