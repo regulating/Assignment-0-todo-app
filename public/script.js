@@ -1,39 +1,59 @@
 const taskForm = document.getElementById('task-form');
 const taskList = document.getElementById('task-list');
 
-taskForm.addEventListener('submit', function (e) {
+taskForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     const taskInput = document.getElementById('task-input');
-    if (taskInput.value.trim() !== '') {
-        addTask(taskInput.value);
+    const description = taskInput.value.trim();
+    if (description !== '') {
+        await addTask(description);
         taskInput.value = '';
+        loadTasks();
     }
 });
 
-function addTask(taskText) {
-    const li = document.createElement('li');
-    li.className = 'task-item';
+// Load tasks from backend
+async function loadTasks() {
+    const res = await fetch('/tasks');
+    const tasks = await res.json();
 
-    const span = document.createElement('span');
-    span.textContent = taskText;
-    li.appendChild(span);
+    taskList.innerHTML = ''; // Clear list
 
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Edit';
-    editBtn.className = 'edit-btn';
-    editBtn.addEventListener('click', () => editTask(span, editBtn));
-    li.appendChild(editBtn);
+    tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'task-item';
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.addEventListener('click', () => li.remove());
-    li.appendChild(deleteBtn);
+        const span = document.createElement('span');
+        span.textContent = task.description;
+        li.appendChild(span);
 
-    taskList.appendChild(li);
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = 'edit-btn';
+        editBtn.addEventListener('click', () => editTask(task.id, span, editBtn));
+        li.appendChild(editBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.addEventListener('click', () => deleteTask(task.id));
+        li.appendChild(deleteBtn);
+
+        taskList.appendChild(li);
+    });
 }
 
-function editTask(span, editBtn) {
+// Add task to backend
+async function addTask(description) {
+    await fetch('/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description })
+    });
+}
+
+// Edit task in backend
+async function editTask(id, span, editBtn) {
     if (editBtn.textContent === 'Edit') {
         const input = document.createElement('input');
         input.type = 'text';
@@ -42,9 +62,27 @@ function editTask(span, editBtn) {
         span.replaceWith(input);
         editBtn.textContent = 'Save';
     } else {
-        const updatedText = span.previousElementSibling.value;
-        span.textContent = updatedText;
-        span.previousElementSibling.replaceWith(span);
+        const updatedText = editBtn.previousElementSibling.value;
+        await fetch(`/tasks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: updatedText })
+        });
+        const spanNew = document.createElement('span');
+        spanNew.textContent = updatedText;
+        editBtn.previousElementSibling.replaceWith(spanNew);
         editBtn.textContent = 'Edit';
+        loadTasks(); // Refresh list
     }
 }
+
+// Delete task from backend
+async function deleteTask(id) {
+    await fetch(`/tasks/${id}`, {
+        method: 'DELETE'
+    });
+    loadTasks(); // Refresh list
+}
+
+// Initial load
+loadTasks();
